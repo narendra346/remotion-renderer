@@ -1,6 +1,6 @@
 /**
- * Remotion Renderer Module - REAL VERSION
- * Actual video rendering using Remotion
+ * Remotion Renderer Module - FIXED VERSION
+ * Actual video rendering using Remotion v4
  */
 
 const { bundle } = require('@remotion/bundler');
@@ -36,21 +36,24 @@ async function renderVideo(options) {
     // Write Video.tsx
     await fs.writeFile(path.join(tempDir, 'Video.tsx'), tsxContent, 'utf-8');
     
-    // Create Root.tsx
+    // Create Root.tsx with correct Remotion v4 syntax
     const rootContent = `
+import React from 'react';
 import { Composition } from 'remotion';
 import Component, { compositionConfig } from './Video';
 
-export const RemotionRoot = () => {
+export const RemotionRoot: React.FC = () => {
   return (
-    <Composition
-      id={compositionConfig.id}
-      component={Component}
-      durationInFrames={compositionConfig.durationInSeconds * compositionConfig.fps}
-      fps={compositionConfig.fps}
-      width={compositionConfig.width}
-      height={compositionConfig.height}
-    />
+    <>
+      <Composition
+        id={compositionConfig.id}
+        component={Component}
+        durationInFrames={Math.round(compositionConfig.durationInSeconds * compositionConfig.fps)}
+        fps={compositionConfig.fps}
+        width={compositionConfig.width}
+        height={compositionConfig.height}
+      />
+    </>
   );
 };
 `;
@@ -62,10 +65,16 @@ export const RemotionRoot = () => {
       webpackOverride: (config) => config,
     });
     
+    console.log('🔍 Selecting composition...');
+    const composition = await selectComposition({
+      serveUrl: bundleLocation,
+      id: compositionId,
+    });
+    
     console.log('🎬 Rendering video...');
     await renderMedia({
       composition: {
-        id: compositionId,
+        ...composition,
         durationInFrames,
         fps,
         width,
@@ -76,7 +85,7 @@ export const RemotionRoot = () => {
       outputLocation: outputPath,
       onProgress: ({ progress }) => {
         const percent = Math.round(progress * 100);
-        if (percent % 10 === 0) {
+        if (percent % 20 === 0) {
           console.log(`Rendering: ${percent}%`);
         }
       },
