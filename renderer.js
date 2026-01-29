@@ -1,6 +1,5 @@
 /**
  * Remotion Renderer Module - FIXED VERSION
- * Actual video rendering using Remotion v4
  */
 
 const { bundle } = require('@remotion/bundler');
@@ -36,7 +35,7 @@ async function renderVideo(options) {
     // Write Video.tsx
     await fs.writeFile(path.join(tempDir, 'Video.tsx'), tsxContent, 'utf-8');
     
-    // Create Root.tsx with correct Remotion v4 syntax
+    // Create Root.tsx - FIXED FOR REMOTION V4
     const rootContent = `
 import React from 'react';
 import { Composition } from 'remotion';
@@ -73,19 +72,13 @@ export const RemotionRoot: React.FC = () => {
     
     console.log('🎬 Rendering video...');
     await renderMedia({
-      composition: {
-        ...composition,
-        durationInFrames,
-        fps,
-        width,
-        height,
-      },
+      composition,
       serveUrl: bundleLocation,
       codec: 'h264',
       outputLocation: outputPath,
       onProgress: ({ progress }) => {
         const percent = Math.round(progress * 100);
-        if (percent % 20 === 0) {
+        if (percent % 10 === 0) {
           console.log(`Rendering: ${percent}%`);
         }
       },
