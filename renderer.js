@@ -1,5 +1,5 @@
 /**
- * Remotion Renderer Module - FIXED VERSION
+ * Remotion Renderer - V4 COMPATIBLE
  */
 
 const { bundle } = require('@remotion/bundler');
@@ -7,9 +7,6 @@ const { renderMedia, selectComposition } = require('@remotion/renderer');
 const path = require('path');
 const fs = require('fs').promises;
 
-/**
- * Render a video from TSX code
- */
 async function renderVideo(options) {
   const {
     tsxFilePath,
@@ -21,90 +18,78 @@ async function renderVideo(options) {
     durationInFrames = 150
   } = options;
 
-  const tempDir = path.join(path.dirname(tsxFilePath), `temp_${Date.now()}`);
+  const tempDir = path.join(path.dirname(tsxFilePath), `project_${Date.now()}`);
 
   try {
-    console.log('📁 Creating temporary project...');
+    console.log('📁 Creating Remotion project...');
     
-    // Create temporary directory structure
     await fs.mkdir(tempDir, { recursive: true });
     
-    // Read the TSX content
+    // Read TSX
     const tsxContent = await fs.readFile(tsxFilePath, 'utf-8');
     
-    // Write Video.tsx
-    await fs.writeFile(path.join(tempDir, 'Video.tsx'), tsxContent, 'utf-8');
-    
-    // Create Root.tsx - FIXED FOR REMOTION V4
-    const rootContent = `
-import React from 'react';
+    // Create index.ts - CORRECT FOR REMOTION V4
+    const indexContent = `
 import { Composition } from 'remotion';
+import React from 'react';
 import Component, { compositionConfig } from './Video';
 
 export const RemotionRoot: React.FC = () => {
   return (
     <>
       <Composition
-        id={compositionConfig.id}
+        id="${compositionId}"
         component={Component}
-        durationInFrames={Math.round(compositionConfig.durationInSeconds * compositionConfig.fps)}
-        fps={compositionConfig.fps}
-        width={compositionConfig.width}
-        height={compositionConfig.height}
+        durationInFrames={${durationInFrames}}
+        fps={${fps}}
+        width=${width}
+        height=${height}
       />
     </>
   );
 };
 `;
-    await fs.writeFile(path.join(tempDir, 'Root.tsx'), rootContent, 'utf-8');
+    
+    await fs.writeFile(path.join(tempDir, 'index.ts'), indexContent);
+    await fs.writeFile(path.join(tempDir, 'Video.tsx'), tsxContent);
     
     console.log('📦 Bundling...');
-    const bundleLocation = await bundle({
-      entryPoint: path.join(tempDir, 'Root.tsx'),
+    const bundled = await bundle({
+      entryPoint: path.join(tempDir, 'index.ts'),
       webpackOverride: (config) => config,
     });
     
     console.log('🔍 Selecting composition...');
     const composition = await selectComposition({
-      serveUrl: bundleLocation,
+      serveUrl: bundled,
       id: compositionId,
     });
     
-    console.log('🎬 Rendering video...');
+    console.log('🎬 Rendering...');
     await renderMedia({
       composition,
-      serveUrl: bundleLocation,
+      serveUrl: bundled,
       codec: 'h264',
       outputLocation: outputPath,
       onProgress: ({ progress }) => {
-        const percent = Math.round(progress * 100);
-        if (percent % 10 === 0) {
-          console.log(`Rendering: ${percent}%`);
+        if (Math.round(progress * 100) % 10 === 0) {
+          console.log(`Progress: ${Math.round(progress * 100)}%`);
         }
       },
     });
     
-    console.log('✅ Render complete!');
-    
-    // Verify output exists
+    console.log('✅ Done!');
     await fs.access(outputPath);
-    
     return outputPath;
 
   } catch (error) {
-    console.error('❌ Render error:', error);
+    console.error('❌ Error:', error);
     throw error;
   } finally {
-    // Cleanup
     try {
       await fs.rm(tempDir, { recursive: true, force: true });
-      console.log('🧹 Cleaned up temp directory');
-    } catch (err) {
-      console.error('Cleanup error:', err);
-    }
+    } catch {}
   }
 }
 
-module.exports = {
-  renderVideo,
-};
+module.exports = { renderVideo };
